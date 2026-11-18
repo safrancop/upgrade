@@ -51,6 +51,7 @@ You can also just open `index.html` in a browser.
 npx playwright install chromium   # first time only
 npm test                          # jsdom walkthrough of every view and tab, plus a negative control
 npm run test:e2e                  # Chromium at desktop and phone width: navigation, persistence, export/import
+APP_URL=https://safrancop.github.io/upgrade/ npm run test:e2e   # same checks against the live site
 ```
 
 - `npm test` boots the app with seeded data and walks all 11 sections and 31 tabs. On the way it checks the meditation timer math, PR detection, weekly training volume, strength percentiles, journal search, undo, persistence and backup restore.

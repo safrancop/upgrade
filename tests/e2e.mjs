@@ -5,7 +5,7 @@ import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-const url = new URL('../index.html', import.meta.url).href;
+const url = process.env.APP_URL || new URL('../index.html', import.meta.url).href;
 const browser = await chromium.launch();
 const results = [];
 
