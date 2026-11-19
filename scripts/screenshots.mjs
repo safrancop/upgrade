@@ -19,6 +19,7 @@ fixture.days[memory]={date:memory,entries:{},journal:{mood:4,morning:'A year ago
 const standards=JSON.parse(source.match(/const STRENGTH_STANDARDS=(\[[^\n]+\]);/)[1]);
 const prior=new Date(date+'T12:00:00');prior.setDate(prior.getDate()-1);
 fixture.days[prior.toISOString().slice(0,10)].exercise[1].exercises=standards.map((s,i)=>({exerciseId:s.exerciseId,name:catalog.find(e=>e.id===s.exerciseId).name,sets:[{reps:1,kg:Math.round(s.male.body.find(row=>row[0]===80)[Math.min(5,i+1)]*(i===5?1.1:1)),rir:1}]}));
+fixture.profile.lastExportAt=stamp;
 const browser=await chromium.launch();
 async function capture(width,height,shots){
   const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:2,reducedMotion:'reduce'});

@@ -15,5 +15,13 @@
     "jsdom": "^30.0.1",
     "playwright": "^1.63.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/safrancop/upgrade.git"
+  },
+  "homepage": "https://safrancop.github.io/upgrade/"
 }
