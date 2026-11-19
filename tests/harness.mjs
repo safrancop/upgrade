@@ -2,8 +2,7 @@ import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {JSDOM, VirtualConsole} from 'jsdom';
 
-const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const appSource=readFileSync(new URL('../js/app.js',import.meta.url),'utf8');
+import {html,appSource} from './source.mjs';
 const freeze=o=>{if(o&&typeof o==='object'){Object.values(o).forEach(freeze);Object.freeze(o);}return o;};
 const copy=o=>JSON.parse(JSON.stringify(o));
 const tick=()=>new Promise(r=>setTimeout(r,10));

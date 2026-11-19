@@ -4,7 +4,7 @@ import {readFile,mkdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 const out=new URL('../docs/screenshots/',import.meta.url);await mkdir(out,{recursive:true});
 const clock=new Date(),stamp=clock.toISOString(),date=clock.getFullYear()+'-'+String(clock.getMonth()+1).padStart(2,'0')+'-'+String(clock.getDate()).padStart(2,'0');
-const source=await readFile(new URL('../js/app.js',import.meta.url),'utf8');
+const source=await readFile(new URL('../js/data/exercises.js',import.meta.url),'utf8')+await readFile(new URL('../js/data/strength-standards.js',import.meta.url),'utf8');
 const catalog=JSON.parse(source.match(/const EXERCISES=(\[[^\n]+\]);/)[1]);
 const bench=catalog.find(e=>e.id==='Barbell_Bench_Press_-_Medium_Grip');
 const fixture={profile:{name:'Alex',bodyweight:80,sex:'male',age:30,identity:['I make room for what matters.'],cardioGoal:{unit:'minutes',value:150},lessonIdx:0,lastLessonDay:date},

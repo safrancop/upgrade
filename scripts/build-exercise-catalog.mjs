@@ -22,7 +22,7 @@ const chosen=[];
 for(let i=0;chosen.length<400;i++){let added=0;for(const group of groups.values()){if(group[i]&&chosen.length<400){chosen.push(group[i]);added++;}}if(!added)break;}
 const catalog=chosen.map(e=>{const primary=muscles(e.primaryMuscles,e.name)[0];return {id:e.id,name:e.name,primary,secondary:muscles([...e.primaryMuscles.slice(1),...e.secondaryMuscles],e.name).filter(m=>m!==primary),equipment:e.equipment,category:e.category,pattern:pattern(e.name,primary)};}).sort((a,b)=>a.name.localeCompare(b.name));
 assert.ok(catalog.length>=300&&catalog.length<=500);assert.equal(new Set(catalog.map(x=>x.id)).size,catalog.length);
-const file=new URL('../js/app.js',import.meta.url),html=readFileSync(file,'utf8');
+const file=new URL('../js/data/exercises.js',import.meta.url),html=readFileSync(file,'utf8');
 const re=/\/\* CATALOG START \*\/[\s\S]*?\/\* CATALOG END \*\//;
 assert.ok(re.test(html));
 writeFileSync(file,html.replace(re,'/* CATALOG START */\nconst EXERCISES='+JSON.stringify(catalog)+';\n/* CATALOG END */'),'utf8');

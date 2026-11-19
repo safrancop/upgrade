@@ -14,7 +14,7 @@ for(const [slug,exerciseId,part] of lifts){
   output.push({slug,exerciseId,part,source:url,male:{body:body[0],age:age[0]},female:{body:body[1],age:age[1]}});
   d.window.close();console.log(slug,body.map(t=>t.length),age.map(t=>t.length));
 }
-const file=new URL('../js/app.js',import.meta.url),html=readFileSync(file,'utf8');
+const file=new URL('../js/data/strength-standards.js',import.meta.url),html=readFileSync(file,'utf8');
 const re=/\/\* STANDARDS START \*\/[\s\S]*?\/\* STANDARDS END \*\//;assert.ok(re.test(html));
 writeFileSync(file,html.replace(re,'/* STANDARDS START */\nconst STRENGTH_STANDARDS='+JSON.stringify(output)+';\n/* STANDARDS END */'),'utf8');
 console.log('Imported',output.length,'published standards. Bytes:',Buffer.byteLength(readFileSync(file)));
