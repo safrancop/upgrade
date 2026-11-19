@@ -94,6 +94,7 @@ a{color:var(--brass)}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--ivory-3);flex:0 0 6px}
 .dot.live{background:var(--sage);box-shadow:0 0 0 3px rgba(134,168,139,.16)}
 .dot.local{background:var(--brass)}
+.dot.warn{background:var(--clay);box-shadow:0 0 0 3px rgba(196,112,90,.2)}
 
 /* ---------- stage ---------- */
 .stage{padding:38px 44px 90px;max-width:1120px;width:100%}
@@ -300,15 +301,6 @@ textarea.long{min-height:200px;font-family:var(--f-display);font-size:1.05rem;li
 .heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,10px);gap:3px;overflow-x:auto;padding-bottom:6px}
 .hc{width:10px;height:10px;border-radius:2px;background:rgba(237,231,218,.06)}
 
-/* coach chat */
-.chat{display:flex;flex-direction:column;gap:16px;max-height:52vh;overflow:auto;padding-right:6px}
-.msg{max-width:76ch}
-.msg .who{font-family:var(--f-mono);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ivory-3);margin-bottom:6px}
-.msg.you .who{color:var(--brass)}
-.msg .bd{white-space:pre-wrap;line-height:1.72;color:var(--ivory-2)}
-.msg.you .bd{color:var(--ivory)}
-.askbar{display:flex;gap:10px;margin-top:20px;align-items:flex-end}
-.askbar textarea{min-height:52px;max-height:160px}
 
 .empty{color:var(--ivory-3);font-size:.9rem;padding:26px 0;font-style:italic;font-family:var(--f-display)}
 .hidden{display:none!important}
@@ -778,5 +770,4 @@ body[data-bg]{background-attachment:fixed}
 .recipe{margin:0 0 18px;border:1px solid var(--line);border-radius:12px;padding:0 14px}
 .recipe summary{cursor:pointer;min-height:42px;display:flex;align-items:center;font-size:.85rem;color:var(--ivory-2)}.recipe[open] summary{color:var(--ivory);margin-bottom:6px}
 .recipe .field:last-of-type{margin-bottom:14px}
-.coach-note{margin-top:14px}
 @media(max-width:600px){.metric-grid{grid-template-columns:1fr 1fr}.aar-table td:nth-child(3){width:30%}}

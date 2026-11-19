@@ -69,17 +69,39 @@ function loadLocal(){
     return true;
   }catch(e){ return false; }
 }
+let saveFailed=false;
 function saveLocal(){
   try{
     localStorage.setItem(LS,JSON.stringify({profile:state.profile,habits:state.habits,days:state.days,books:state.books,savedAt:nowISO()}));
     lastSavedAt=new Date();
+    if(saveFailed){ saveFailed=false; toast("Saving works again."); }
     stampSaved();
     return true;
-  }catch(e){ console.warn("[upgrade] local save failed",e); return false; }
+  }catch(e){
+    /* Storage full, blocked (private mode) or evicted: say so loudly, once, and point to Export. */
+    console.warn("[upgrade] local save failed",e);
+    if(!saveFailed){ saveFailed=true; toast("Couldn't save in this browser. Export a backup now so nothing is lost.",8000); }
+    stampSaved();
+    return false;
+  }
+}
+function backupAge(){
+  const t=state.profile.lastExportAt; if(!t) return null;
+  return Math.floor((Date.now()-new Date(t).getTime())/86400000);
+}
+/* A backup is due once there is real history and the last export is two weeks old (or never happened). */
+function backupDue(){
+  const age=backupAge(), logged=Object.keys(state.days).length;
+  return logged>=7 && (age===null || age>=14);
 }
 function stampSaved(){
   const n=document.getElementById("savedStamp");
   if(n&&lastSavedAt) n.textContent="Saved "+pad(lastSavedAt.getHours())+":"+pad(lastSavedAt.getMinutes());
+  const txt=document.getElementById("syncTxt"), dot=document.getElementById("syncDot");
+  if(txt&&dot){
+    txt.textContent = saveFailed ? "Not saving — export now" : backupDue() ? "Time for a backup" : "Saved in this browser";
+    dot.className = "dot " + (saveFailed||backupDue() ? "warn" : "local");
+  }
   document.querySelectorAll(".saved[data-live]").forEach(x=>{
     x.textContent = lastSavedAt ? "Saved "+pad(lastSavedAt.getHours())+":"+pad(lastSavedAt.getMinutes()) : "";
     x.classList.add("ok");
@@ -197,7 +219,7 @@ meditate:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-widt
 read:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 5.6C8.7 4.6 7 4.2 4.4 4.2v9.6c2.6 0 4.3.4 5.6 1.4 1.3-1 3-1.4 5.6-1.4V4.2c-2.6 0-4.3.4-5.6 1.4z"/><path d="M10 5.6v9.6" /></svg>',
 move:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.2 8v4M5.6 6.4v7.2M14.4 6.4v7.2M16.8 8v4M5.6 10h8.8"/></svg>',
 mind:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3.2c3 0 5 2 5 4.6 0 1.6-.8 2.5-.8 3.9 0 .9.5 1.4.5 2.2 0 1.4-1.6 2.4-3.4 2.4-1.4 0-2.3-.6-2.3-1.7"/><path d="M10 3.2C7 3.2 5 5.2 5 7.8c0 1.6.8 2.5.8 3.9 0 .9-.5 1.4-.5 2.2" stroke-linecap="round"/></svg>',
-coach:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 2.8v3.4M10 13.8v3.4M4.9 4.9l2.4 2.4M12.7 12.7l2.4 2.4M2.8 10h3.4M13.8 10h3.4M4.9 15.1l2.4-2.4M12.7 7.3l2.4-2.4"/></svg>',
+lessons:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 2.8v3.4M10 13.8v3.4M4.9 4.9l2.4 2.4M12.7 12.7l2.4 2.4M2.8 10h3.4M13.8 10h3.4M4.9 15.1l2.4-2.4M12.7 7.3l2.4-2.4"/></svg>',
 progress:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.5 16.5h13"/><path d="M6 16.5V11M10 16.5V5.5M14 16.5V8.5"/></svg>'
 };
 ICONS.cardio='<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10h4l2-5 4 10 2-5h4"/></svg>';
@@ -221,11 +243,11 @@ function navModel(){
   return [
    {g:"",items:[{id:"today",label:"Today"},{id:"goals",label:"Goals"},{id:"habits",label:"Habits"}]},
    {g:"Practices",key:"practices",edit:true,items:enabledPractices()},
-   {g:"Guidance",key:"guidance",items:[{id:"coach",label:"Lessons"},{id:"progress",label:"Progress"}]}
+   {g:"Guidance",key:"guidance",items:[{id:"lessons",label:"Lessons"},{id:"progress",label:"Progress"}]}
   ];
 }
 function navLabel(id){
-  return {today:"Today",goals:"Goals",habits:"Habits",coach:"Lessons",progress:"Progress"}[id]||PRACTICES.find(p=>p.id===id)?.label;
+  return {today:"Today",goals:"Goals",habits:"Habits",lessons:"Lessons",progress:"Progress"}[id]||PRACTICES.find(p=>p.id===id)?.label;
 }
 /* Which menu groups are folded is a per-device preference, not profile data. */
 let navClosed={};
@@ -360,7 +382,7 @@ function tabsNode(section,items){
 /* A view that fails says so. It never goes blank — a blank page hides the cause. */
 function renderView(v){
   const fn={today:renderToday,goals:renderGoals,habits:renderHabits,journal:renderJournal,meditate:renderMeditate,read:renderRead,
-    move:renderMove,cardio:renderCardio,mind:renderMind,coach:renderCoach,progress:renderProgress}[v]||renderToday;
+    move:renderMove,cardio:renderCardio,mind:renderMind,lessons:renderLessons,progress:renderProgress}[v]||renderToday;
   try{ fn(); }
   catch(e){
     console.error("[upgrade] view "+v+" failed",e);
@@ -899,7 +921,7 @@ function gAreas(v){
 }
 
 function sectionHeading(v,id,title,subtitle){
-  const meta={goals:['What this quarter is for','brass'],habits:['Every ritual, one place','brass'],journal:['A little self-understanding','lilac'],meditate:['Space to simply be','dusk'],read:['A world between pages','sage'],move:['Strength, one session at a time','clay'],cardio:['Find your pace','dusk'],mind:['Become who you practise being','lilac'],coach:['One idea a day','brass'],progress:['The bigger picture','sage']}[id];
+  const meta={goals:['What this quarter is for','brass'],habits:['Every ritual, one place','brass'],journal:['A little self-understanding','lilac'],meditate:['Space to simply be','dusk'],read:['A world between pages','sage'],move:['Strength, one session at a time','clay'],cardio:['Find your pace','dusk'],mind:['Become who you practise being','lilac'],lessons:['One idea a day','brass'],progress:['The bigger picture','sage']}[id];
   v.style.setProperty('--section-accent','var(--'+meta[1]+')');
   const motif=id==='meditate'?'<circle cx="105" cy="70" r="44"/><circle cx="105" cy="70" r="32"/><circle cx="105" cy="70" r="20"/>':id==='read'?'<path d="M50 38q30-8 55 8v66q-25-16-55-8Zm55 8q25-16 55-8v66q-30-8-55 8M62 53l28 5m-28 11 28 5m-28 11 28 5m28-33 28-5m-28 21 28-5m-28 21 28-5"/>':id==='journal'?'<path d="M64 27h72v90H64Zm14 22h36M78 63h24m-24 14h32m-32 14h18m43-25 20-29 7 5-20 29-10 7Z"/>':id==='move'?'<path d="M44 61v28m12-40v51m12-27h71m0-24v51m12-39v28"/>':id==='cardio'?'<path d="M35 75h34l13-31 23 65 18-44 10 10h39"/>':id==='mind'?'<path d="M86 113v-16Q57 92 60 62a39 39 0 0 1 76-4l15 22h-16v19h-17v14"/><circle cx="97" cy="61" r="16"/>':'<path d="M48 107V79m27 28V65m27 42V48m27 59V35m27 72V23M39 113h129"/>';
   v.innerHTML='<header class="section-hero"><div><div class="eyebrow">'+meta[0]+'</div><h2 class="sec">'+esc(title)+'</h2><p class="secsub">'+esc(subtitle)+'</p></div><svg viewBox="0 0 200 140" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="102" cy="70" r="62" stroke-opacity=".12"/>'+motif+'</svg></header>';
@@ -929,9 +951,10 @@ function homeArtwork(style,pct){
   return common+'<circle cx="220" cy="'+sunY+'" r="68" stroke="var(--brass)" stroke-opacity=".08"/><circle cx="220" cy="'+sunY+'" r="53" stroke="var(--brass)" stroke-opacity=".14"/><circle cx="220" cy="'+sunY+'" r="37" class="sun"/><path d="M0 232Q115 98 255 182T430 160V290H0Z" fill="url(#horizonFade)"/><path d="M-20 260Q125 170 230 220T430 190V290H0Z" fill="var(--ink-600)"/><path d="M-20 284Q155 213 420 249V290H0Z" fill="var(--ink-800)"/><path d="M150 267Q190 243 240 230T278 204" stroke="var(--brass)" stroke-opacity=".5" stroke-width="1.3"/><path d="M287 58h10m-5-5v10M118 91h6m-3-3v6" stroke="var(--ivory)" stroke-opacity=".55"/></svg>';
 }
 function homePreferences(){
-  openSheet('<h3>Make this space yours.</h3><p class="sh-sub">One warm world. Choose the view that feels like you.</p><div class="label">Today artwork</div><div class="home-art-options">'+['horizon','garden','orbit'].map(id=>'<button class="chip'+((state.profile.homeArt||'horizon')===id?' on':'')+'" data-home-art="'+id+'" aria-pressed="'+((state.profile.homeArt||'horizon')===id)+'">'+id[0].toUpperCase()+id.slice(1)+'</button>').join('')+'</div><div id="rewardPreferences"></div><div class="sheet-actions"><button class="btn" id="homePrefsDone">Done</button></div>',s=>{
+  openSheet('<h3>Make this space yours.</h3><p class="sh-sub">One warm world. Choose the view that feels like you.</p><label class="field"><span>Your name</span><input id="profileName" type="text" maxlength="40" autocomplete="given-name" placeholder="What should Upgrade call you?" value="'+esc(state.profile.name||'')+'"></label><div class="label">Today artwork</div><div class="home-art-options">'+['horizon','garden','orbit'].map(id=>'<button class="chip'+((state.profile.homeArt||'horizon')===id?' on':'')+'" data-home-art="'+id+'" aria-pressed="'+((state.profile.homeArt||'horizon')===id)+'">'+id[0].toUpperCase()+id.slice(1)+'</button>').join('')+'</div><div id="rewardPreferences"></div><div class="sheet-actions"><button class="btn" id="homePrefsDone">Done</button></div>',s=>{
     s.querySelectorAll('[data-home-art]').forEach(b=>b.onclick=()=>{state.profile.homeArt=b.dataset.homeArt;pushProfile();renderToday();homePreferences();});
-    s.querySelector('#homePrefsDone').onclick=closeSheet;
+    const nm=s.querySelector('#profileName');nm.onchange=()=>{state.profile.name=nm.value.trim();pushProfile();renderAll();};
+    s.querySelector('#homePrefsDone').onclick=()=>{if(nm.value.trim()!==(state.profile.name||'')){state.profile.name=nm.value.trim();pushProfile();renderAll();}closeSheet();};
     if(typeof rewardPreferences==='function')rewardPreferences(s.querySelector('#rewardPreferences'));
   });
 }
@@ -1063,6 +1086,7 @@ function rewardPreferences(node){
   node.querySelector('#celebrationSound').onchange=e=>{state.profile.celebrationSound=e.target.checked;pushProfile();if(e.target.checked){audioReady();bell();}};
 }
 function noticeProgress(k,undo){
+  if(saveFailed) return; /* never celebrate over the "couldn't save" warning */
   const prev=rewardSnapshot.get(k)||new Set(),now=new Set(Object.keys(dayRO(k)?.entries||{}).filter(id=>isDone({id},k)));
   rewardSnapshot.set(k,now);
   const added=[...now].filter(id=>!prev.has(id));
@@ -1417,7 +1441,7 @@ function entryNode(pk,full){
   e.innerHTML='<div class="ed">'+esc(prettyDate(pk))+', '+pk.slice(0,4)+mood+'</div><div class="eb">'+esc(body)+'</div>';
   if(pj.reflections&&pj.reflections.length){
     const r=el("div","lesson"); r.style.marginTop="14px";
-    r.innerHTML='<div class="eyebrow">Coach said</div><p>'+esc(pj.reflections[pj.reflections.length-1].text)+'</p>';
+    r.innerHTML='<div class="eyebrow">Reflection</div><p>'+esc(pj.reflections[pj.reflections.length-1].text)+'</p>';
     e.appendChild(r);
   }
   return e;
@@ -2408,11 +2432,11 @@ function runPriming(){
 }
 
 /* =========================================================================
-   COACH
+   LESSONS
    ========================================================================= */
-function renderCoach(){
-  const v=$("#v-coach");
-  sectionHeading(v,'coach','Lessons','One small, evidence-based idea a day, with one thing to do about it.');
+function renderLessons(){
+  const v=$("#v-lessons");
+  sectionHeading(v,'lessons','Lessons','One small, evidence-based idea a day, with one thing to do about it.');
   const p=el("div","panel flat");
   LESSONS.forEach((L,i)=>{
     const n=el("div","lesson"); n.style.marginBottom="34px";
@@ -2420,7 +2444,7 @@ function renderCoach(){
       '<div class="lt">'+esc(L.t)+'</div>'+L.b.map(x=>'<p>'+esc(x)+'</p>').join("")+
       '<div class="act"><b>Do this</b><span>'+esc(L.a)+'</span></div>';
     const b=el("button","chip","Make this today's lesson"); b.style.marginTop="14px";
-    b.onclick=()=>{ state.profile.lessonIdx=i; state.profile.lastLessonDay=todayKey(); pushProfile(); toast("Set. It's on your home page."); renderCoach(); };
+    b.onclick=()=>{ state.profile.lessonIdx=i; state.profile.lastLessonDay=todayKey(); pushProfile(); toast("Set. It's on your home page."); renderLessons(); };
     n.appendChild(b);
     p.appendChild(n);
   });
@@ -2507,7 +2531,8 @@ function renderData(v){
    ["Oldest day stored", daysWith.length?prettyDate(daysWith.sort()[0]):"—"],
    ["Habits", String(state.habits.length)],
    ["Local backup size", (lsSize/1024).toFixed(1)+" KB"],
-   ["Last save", lastSavedAt?lastSavedAt.toLocaleString():"—"]
+   ["Last save", lastSavedAt?lastSavedAt.toLocaleString():"—"],
+   ["Last backup", backupAge()===null?"Never — export one below":backupAge()===0?"Today":backupAge()+" day(s) ago"]
   ].forEach(([a,b])=>{ dl.appendChild(el("dt","",esc(a))); dl.appendChild(el("dd","",esc(b))); });
   p.appendChild(dl);
 
@@ -2522,7 +2547,7 @@ function renderData(v){
 
   const imp=el("div","panel"); imp.style.marginTop="30px";
   imp.appendChild(el("div","label","Restore from a backup"));
-  imp.appendChild(el("p","secsub","Or paste the contents of an exported file. Days you already have are kept unless the backup is newer."));
+  imp.appendChild(el("p","secsub","Or paste the contents of an exported file. Days you already have are kept unless the backup's copy is newer; goals and settings come from the backup."));
   const ta=el("textarea"); ta.placeholder='{"exportedAt": …}';
   imp.appendChild(ta);
   const go3=el("button","btn ghost","Restore"); go3.style.marginTop="14px";
@@ -2532,23 +2557,26 @@ function renderData(v){
 }
 
 /* Merge a backup into what is already here. Newest copy of each day wins;
-   habits and books are added by id; the profile (goals, focus, identity) is
-   taken from the backup when it is newer or when nothing local was ever saved. */
+   habits are added or updated by id, books are added; the profile comes from the backup. */
 function restoreBackup(text){
   let o; try{ o=thaw(JSON.parse(text)); }catch(e){ toast("That is not valid JSON."); return false; }
-  if(!o||!o.days){ toast("No data found in that backup."); return false; }
+  const isObj=x=>x&&typeof x==="object"&&!Array.isArray(x);
+  if(!isObj(o)||!isObj(o.days)){ toast("No data found in that backup."); return false; }
   Object.keys(o.days).forEach(k=>{
     const inc=o.days[k], loc=state.days[k];
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k)||!isObj(inc)) return;
+    inc.date=k;
     if(!loc || !loc.updatedAt || (inc.updatedAt && inc.updatedAt>loc.updatedAt)) state.days[k]=inc;
   });
-  (o.habits||[]).forEach(h=>{
+  (Array.isArray(o.habits)?o.habits:[]).filter(h=>isObj(h)&&h.id&&typeof h.name==="string").forEach(h=>{
     const i=state.habits.findIndex(x=>x.id===h.id);
     if(i<0) state.habits.push(h);
     else if(h.updatedAt && (!state.habits[i].updatedAt || h.updatedAt>state.habits[i].updatedAt)) state.habits[i]=h;
   });
-  (o.books||[]).forEach(b=>{ if(!state.books.some(x=>x.id===b.id)) state.books.push(b); });
-  if(o.profile && (!state.profile.updatedAt || (o.profile.updatedAt && o.profile.updatedAt>state.profile.updatedAt)))
-    state.profile=Object.assign(state.profile,o.profile);
+  (Array.isArray(o.books)?o.books:[]).filter(b=>isObj(b)&&b.id).forEach(b=>{ if(!state.books.some(x=>x.id===b.id)) state.books.push(b); });
+  /* Importing is a deliberate act: the backup's profile (goals, focus, name, identity) wins.
+     Comparing timestamps here would lose it, because a fresh browser touches its own profile on first render. */
+  if(isObj(o.profile)) state.profile=Object.assign(state.profile,o.profile);
   saveLocal(); renderAll(); toast("Restored.");
   return true;
 }
@@ -2557,9 +2585,9 @@ function restoreBackup(text){
    CHROME
    ========================================================================= */
 let toastT=null;
-function toast(msg){
+function toast(msg,ms=2400){
   const t=$("#toast"); t.textContent=msg; t.classList.add("on");
-  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),2400);
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),ms);
 }
 $("#collapseBtn").onclick=()=>{
   state.rail=!state.rail;
@@ -2567,12 +2595,14 @@ $("#collapseBtn").onclick=()=>{
   $("#collapseBtn").querySelector(".ftext").textContent=state.rail?"Collapse menu":"Expand";
 };
 $("#bgBtn").onclick=sheetBackground;
-$("#syncBtn").onclick=()=>toast("Saved in this browser only. Use Export to keep a backup.");
+$("#syncBtn").onclick=()=>toast(saveFailed?"This browser is refusing to save. Export a backup now.":
+  backupDue()?"Your data lives only in this browser. Export a backup to keep a copy.":"Saved in this browser only. Use Export to keep a backup.");
 $("#exportBtn").onclick=()=>{
   const blob=new Blob([JSON.stringify({exportedAt:nowISO(),profile:state.profile,habits:state.habits,books:state.books,days:state.days},null,2)],{type:"application/json"});
   const a=el("a"); a.href=URL.createObjectURL(blob); a.download="upgrade-"+todayKey()+".json";
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  state.profile.lastExportAt=nowISO(); pushProfile();
   toast("Backup downloaded.");
 };
 $("#importBtn").onclick=()=>$("#importFile").click();
@@ -2600,3 +2630,18 @@ setInterval(()=>{
   }
 },60000);
 window.addEventListener("beforeunload",()=>{ saveLocal(); });
+
+/* Another tab saved. Adopt its copy, so this tab's next save cannot overwrite that work
+   with stale data. Re-render unless the person is typing here; then wait for them to leave the field. */
+let pendingRender=false;
+window.addEventListener("storage",e=>{
+  if(e.key!==LS||!e.newValue) return;
+  loadLocal(); ensureSeed(); stampSaved();
+  const a=document.activeElement;
+  if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)){ pendingRender=true; return; }
+  renderAll();
+});
+document.addEventListener("focusout",()=>{ if(pendingRender){ pendingRender=false; setTimeout(renderAll,0); } });
+
+/* Ask the browser not to evict this site's storage under pressure (Safari clears unvisited sites). */
+try{ navigator.storage?.persist?.(); }catch(e){}
